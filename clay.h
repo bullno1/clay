@@ -48,6 +48,8 @@
 
 #define CLAY_CUSTOM_ELEMENT(...) Clay__AttachElementConfig(CLAY__CONFIG_WRAPPER(Clay_ElementConfigUnion, { .customElementConfig = Clay__StoreCustomElementConfig(CLAY__INIT(Clay_CustomElementConfig) __VA_ARGS__) }, CLAY__ELEMENT_CONFIG_TYPE_CUSTOM))
 
+#define CLAY_TRANSFORM(...) Clay__AttachElementConfig(CLAY__CONFIG_WRAPPER(Clay_ElementConfigUnion, { .transformElementConfig = Clay__StoreTransformElementConfig(CLAY__INIT(Clay_TransformElementConfig) __VA_ARGS__) }, CLAY__ELEMENT_CONFIG_TYPE_TRANSFORM))
+
 #define CLAY_SCROLL(...) Clay__AttachElementConfig(CLAY__CONFIG_WRAPPER(Clay_ElementConfigUnion, { .scrollElementConfig = Clay__StoreScrollElementConfig(CLAY__INIT(Clay_ScrollElementConfig) __VA_ARGS__) }, CLAY__ELEMENT_CONFIG_TYPE_SCROLL_CONTAINER))
 
 #define CLAY_BORDER(...) Clay__AttachElementConfig(CLAY__CONFIG_WRAPPER(Clay_ElementConfigUnion, { .borderElementConfig = Clay__StoreBorderElementConfig(CLAY__INIT(Clay_BorderElementConfig) __VA_ARGS__) }, CLAY__ELEMENT_CONFIG_TYPE_BORDER_CONTAINER))
@@ -186,6 +188,7 @@ typedef enum CLAY_PACKED_ENUM {
     CLAY__ELEMENT_CONFIG_TYPE_IMAGE = 16,
     CLAY__ELEMENT_CONFIG_TYPE_TEXT = 32,
     CLAY__ELEMENT_CONFIG_TYPE_CUSTOM = 64,
+    CLAY__ELEMENT_CONFIG_TYPE_TRANSFORM = 128,
 } Clay__ElementConfigType;
 
 // Element Configs ---------------------------
@@ -354,6 +357,15 @@ typedef struct
     Clay_CornerRadius cornerRadius;
 } Clay_BorderElementConfig;
 
+typedef struct
+{
+    #ifndef CLAY_EXTEND_CONFIG_TRANSFORM
+    void* transformData;
+    #else
+    CLAY_EXTEND_CONFIG_TRANSFORM
+    #endif
+} Clay_TransformElementConfig;
+
 typedef union
 {
     Clay_RectangleElementConfig *rectangleElementConfig;
@@ -363,6 +375,7 @@ typedef union
     Clay_CustomElementConfig *customElementConfig;
     Clay_ScrollElementConfig *scrollElementConfig;
     Clay_BorderElementConfig *borderElementConfig;
+    Clay_TransformElementConfig *transformElementConfig;
 } Clay_ElementConfigUnion;
 
 typedef struct
@@ -392,6 +405,8 @@ typedef enum {
     CLAY_RENDER_COMMAND_TYPE_IMAGE,
     CLAY_RENDER_COMMAND_TYPE_SCISSOR_START,
     CLAY_RENDER_COMMAND_TYPE_SCISSOR_END,
+    CLAY_RENDER_COMMAND_TYPE_TRANSFORM_START,
+    CLAY_RENDER_COMMAND_TYPE_TRANSFORM_END,
     CLAY_RENDER_COMMAND_TYPE_CUSTOM,
 } Clay_RenderCommandType;
 
@@ -460,6 +475,7 @@ Clay_TextElementConfig * Clay__StoreTextElementConfig(Clay_TextElementConfig con
 Clay_ImageElementConfig * Clay__StoreImageElementConfig(Clay_ImageElementConfig config);
 Clay_FloatingElementConfig * Clay__StoreFloatingElementConfig(Clay_FloatingElementConfig config);
 Clay_CustomElementConfig * Clay__StoreCustomElementConfig(Clay_CustomElementConfig config);
+Clay_TransformElementConfig * Clay__StoreTransformElementConfig(Clay_TransformElementConfig config);
 Clay_ScrollElementConfig * Clay__StoreScrollElementConfig(Clay_ScrollElementConfig config);
 Clay_BorderElementConfig * Clay__StoreBorderElementConfig(Clay_BorderElementConfig config);
 Clay_ElementId Clay__HashString(Clay_String key, uint32_t offset, uint32_t seed);
@@ -817,6 +833,29 @@ Clay_CustomElementConfig *Clay__CustomElementConfigArray_Add(Clay__CustomElement
 		return &array->internalArray[array->length - 1];
 	}
 	return &CLAY__CUSTOM_ELEMENT_CONFIG_DEFAULT;
+}
+#pragma endregion
+// __GENERATED__ template
+
+Clay_TransformElementConfig CLAY__TRANSFORM_ELEMENT_CONFIG_DEFAULT = CLAY__INIT(Clay_TransformElementConfig) {};
+
+// __GENERATED__ template array_define,array_allocate,array_add TYPE=Clay_TransformElementConfig NAME=Clay__TransformElementConfigArray DEFAULT_VALUE=&CLAY__TRANSFORM_ELEMENT_CONFIG_DEFAULT
+#pragma region generated
+typedef struct
+{
+	uint32_t capacity;
+	uint32_t length;
+	Clay_TransformElementConfig *internalArray;
+} Clay__TransformElementConfigArray;
+Clay__TransformElementConfigArray Clay__TransformElementConfigArray_Allocate_Arena(uint32_t capacity, Clay_Arena *arena) {
+    return CLAY__INIT(Clay__TransformElementConfigArray){.capacity = capacity, .length = 0, .internalArray = (Clay_TransformElementConfig *)Clay__Array_Allocate_Arena(capacity, sizeof(Clay_TransformElementConfig), CLAY__ALIGNMENT(Clay_TransformElementConfig), arena)};
+}
+Clay_TransformElementConfig *Clay__TransformElementConfigArray_Add(Clay__TransformElementConfigArray *array, Clay_TransformElementConfig item) {
+	if (Clay__Array_IncrementCapacityCheck(array->length, array->capacity)) {
+		array->internalArray[array->length++] = item;
+		return &array->internalArray[array->length - 1];
+	}
+	return &CLAY__TRANSFORM_ELEMENT_CONFIG_DEFAULT;
 }
 #pragma endregion
 // __GENERATED__ template
@@ -1403,6 +1442,7 @@ Clay__ImageElementConfigArray Clay__imageElementConfigs;
 Clay__FloatingElementConfigArray Clay__floatingElementConfigs;
 Clay__ScrollElementConfigArray Clay__scrollElementConfigs;
 Clay__CustomElementConfigArray Clay__customElementConfigs;
+Clay__TransformElementConfigArray Clay__transformElementConfigs;
 Clay__BorderElementConfigArray Clay__borderElementConfigs;
 // Misc Data Structures
 Clay__StringArray Clay__layoutElementIdStrings;
@@ -1907,6 +1947,7 @@ void Clay__InitializeEphemeralMemory(Clay_Arena *arena) {
     Clay__floatingElementConfigs = Clay__FloatingElementConfigArray_Allocate_Arena(CLAY_MAX_ELEMENT_COUNT, arena);
     Clay__scrollElementConfigs = Clay__ScrollElementConfigArray_Allocate_Arena(CLAY_MAX_ELEMENT_COUNT, arena);
     Clay__customElementConfigs = Clay__CustomElementConfigArray_Allocate_Arena(CLAY_MAX_ELEMENT_COUNT, arena);
+    Clay__transformElementConfigs = Clay__TransformElementConfigArray_Allocate_Arena(CLAY_MAX_ELEMENT_COUNT, arena);
     Clay__borderElementConfigs = Clay__BorderElementConfigArray_Allocate_Arena(CLAY_MAX_ELEMENT_COUNT, arena);
 
     Clay__layoutElementIdStrings = Clay__StringArray_Allocate_Arena(CLAY_MAX_ELEMENT_COUNT, arena);
@@ -2488,6 +2529,9 @@ void Clay__CalculateFinalLayout() {
                             renderCommand.commandType = CLAY_RENDER_COMMAND_TYPE_CUSTOM;
                             break;
                         }
+                        case CLAY__ELEMENT_CONFIG_TYPE_TRANSFORM: {
+                            renderCommand.commandType = CLAY_RENDER_COMMAND_TYPE_TRANSFORM_START;
+                        }
                         default: break;
                     }
                     if (shouldRender) {
@@ -2597,6 +2641,12 @@ void Clay__CalculateFinalLayout() {
                        .commandType = CLAY_RENDER_COMMAND_TYPE_SCISSOR_END,
                     });
                 }
+                if (Clay__ElementHasConfig(currentElement, CLAY__ELEMENT_CONFIG_TYPE_TRANSFORM)) {
+                    Clay_RenderCommandArray_Add(&Clay__renderCommands, CLAY__INIT(Clay_RenderCommand) {
+                        .id = Clay__RehashWithNumber(currentElement->id, 11),  // What should this id be?
+                       .commandType = CLAY_RENDER_COMMAND_TYPE_TRANSFORM_END,
+                    });
+                }
 
                 dfsBuffer.length--;
                 continue;
@@ -2680,6 +2730,7 @@ inline Clay_TextElementConfig * Clay__StoreTextElementConfig(Clay_TextElementCon
 inline Clay_ImageElementConfig * Clay__StoreImageElementConfig(Clay_ImageElementConfig config) { return Clay__ImageElementConfigArray_Add(&Clay__imageElementConfigs, config); }
 inline Clay_FloatingElementConfig * Clay__StoreFloatingElementConfig(Clay_FloatingElementConfig config) { return Clay__FloatingElementConfigArray_Add(&Clay__floatingElementConfigs, config); }
 inline Clay_CustomElementConfig * Clay__StoreCustomElementConfig(Clay_CustomElementConfig config) { return Clay__CustomElementConfigArray_Add(&Clay__customElementConfigs, config); }
+inline Clay_TransformElementConfig * Clay__StoreTransformElementConfig(Clay_TransformElementConfig config) { return Clay__TransformElementConfigArray_Add(&Clay__transformElementConfigs, config); }
 inline Clay_ScrollElementConfig * Clay__StoreScrollElementConfig(Clay_ScrollElementConfig config) { return Clay__ScrollElementConfigArray_Add(&Clay__scrollElementConfigs, config); }
 inline Clay_BorderElementConfig * Clay__StoreBorderElementConfig(Clay_BorderElementConfig config) { return Clay__BorderElementConfigArray_Add(&Clay__borderElementConfigs, config); }
 
@@ -2740,6 +2791,7 @@ Clay__DebugElementConfigTypeLabelConfig Clay__DebugGetElementConfigTypeLabel(Cla
         case CLAY__ELEMENT_CONFIG_TYPE_SCROLL_CONTAINER: return CLAY__INIT(Clay__DebugElementConfigTypeLabelConfig) { CLAY_STRING("Scroll"), CLAY__INIT(Clay_Color) {242,196,90,255} };
         case CLAY__ELEMENT_CONFIG_TYPE_BORDER_CONTAINER: return CLAY__INIT(Clay__DebugElementConfigTypeLabelConfig) { CLAY_STRING("Border"), CLAY__INIT(Clay_Color) {108,91,123, 255} };
         case CLAY__ELEMENT_CONFIG_TYPE_CUSTOM: return CLAY__INIT(Clay__DebugElementConfigTypeLabelConfig) { CLAY_STRING("Custom"), CLAY__INIT(Clay_Color) {11,72,107,255} };
+        case CLAY__ELEMENT_CONFIG_TYPE_TRANSFORM: return CLAY__INIT(Clay__DebugElementConfigTypeLabelConfig) { CLAY_STRING("Transform"), CLAY__INIT(Clay_Color) {11,72,107,255} };
     }
     return CLAY__INIT(Clay__DebugElementConfigTypeLabelConfig) { CLAY_STRING("Error"), CLAY__INIT(Clay_Color) {0,0,0,255} };
 }
