@@ -306,6 +306,8 @@ typedef CLAY_PACKED_ENUM {
     CLAY__SIZING_TYPE_PERCENT,
     // Clamps the axis size to an exact size in pixels.
     CLAY__SIZING_TYPE_FIXED,
+    // For internal use
+    CLAY__SIZING_TYPE_TEXT,
 } Clay__SizingType;
 
 // Controls how child elements are aligned on each axis.
